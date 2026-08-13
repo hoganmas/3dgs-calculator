@@ -39,4 +39,9 @@ Output: parsed expression, Taylor polynomial, center/weight table, and a 1D spla
 | `pyodide-worker.js` | Boots Pyodide, installs deps, runs `coeffs.browser.decompose` |
 | `../coeffs/browser.py` | JSON API used inside Pyodide |
 
-Next step toward the graphic calculator: feed `centers` / `weights` into a custom Three.js splat renderer (signed weights + envelope removal in-shader).
+## 3D view
+
+After decompose, centers are drawn as camera-facing gaussian billboards in Three.js
+(additive blending; green = positive weight, coral = negative). Orbit with the mouse.
+
+The cream curve is the enveloped Taylor target \(P(x)e^{-x^2/2}\).

@@ -12,7 +12,7 @@ const COEFF_FILES = [
 let pyodide = null;
 
 async function loadLocalModule(filename) {
-  const response = await fetch(`/coeffs/${filename}`);
+  const response = await fetch(`/coeffs/${filename}?t=${Date.now()}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch coeffs/${filename}: ${response.status}`);
   }

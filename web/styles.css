@@ -29,7 +29,7 @@ body {
 }
 
 .page {
-  width: min(1100px, calc(100% - 2rem));
+  width: min(1180px, calc(100% - 2rem));
   margin: 0 auto;
   padding: 2.5rem 0 4rem;
 }
@@ -139,6 +139,89 @@ button:not(:disabled):hover {
   display: grid;
   grid-template-columns: 0.9fr 1.3fr;
   gap: 1rem;
+  margin-top: 1rem;
+}
+
+.viewport-panel {
+  margin-top: 0.25rem;
+  padding-bottom: 0.85rem;
+}
+
+.viewport-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.viewport-head h2 {
+  margin: 0;
+}
+
+.viewport-tools {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  max-width: min(420px, 100%);
+}
+
+.intensity-field {
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+  width: min(320px, 100%);
+}
+
+.intensity-field span {
+  grid-column: 1;
+}
+
+.intensity-field input[type="range"] {
+  grid-column: 2;
+  width: 100%;
+  height: 1.4rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: var(--accent);
+}
+
+.intensity-field output {
+  grid-column: 3;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--ink);
+  min-width: 2.6rem;
+  text-align: right;
+}
+
+.hint.tight {
+  margin: 0;
+  font-size: 0.84rem;
+  text-align: right;
+}
+
+.viewport3d {
+  position: relative;
+  width: 100%;
+  height: min(52vh, 520px);
+  min-height: 320px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #2a251f;
+  background: #14110e;
+}
+
+.viewport3d canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 @media (max-width: 860px) {

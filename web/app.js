@@ -1,3 +1,5 @@
+import { SplatViewer } from "/web/splats3d.js";
+
 const $ = (id) => document.getElementById(id);
 
 const statusEl = $("status");
@@ -7,6 +9,19 @@ const centersEl = $("centers");
 const exprInput = $("expr");
 const canvas = $("plot");
 const ctx = canvas.getContext("2d");
+const splatViewer = new SplatViewer($("viewport3d"));
+
+const intensityInput = $("intensity");
+const intensityValue = $("intensityValue");
+
+function syncIntensity() {
+  const value = Number(intensityInput.value);
+  intensityValue.textContent = value.toFixed(2);
+  splatViewer.setIntensity(value);
+}
+
+intensityInput.addEventListener("input", syncIntensity);
+syncIntensity();
 
 const worker = new Worker("/web/pyodide-worker.js");
 let ready = false;
@@ -96,24 +111,43 @@ function scheduleParse() {
 }
 
 function renderResult(result) {
+  const errLabel =
+    result.max_rel_error == null
+      ? "n/a (multi-d)"
+      : Number(result.max_rel_error).toExponential(3);
+
   metaEl.innerHTML = `
     <dt>parsed</dt><dd>${escapeHtml(result.parsed)}</dd>
     <dt>taylor</dt><dd>${escapeHtml(result.taylor)}</dd>
+    <dt>vars / dims</dt><dd>${(result.variables || []).join(", ")} · ${result.dims}D</dd>
     <dt>N / ε</dt><dd>${result.N} / ${result.epsilon}</dd>
-    <dt>max rel err</dt><dd>${result.max_rel_error.toExponential(3)}</dd>
+    <dt>splats</dt><dd>${result.splat_count ?? result.centers.length}</dd>
+    <dt>max rel err</dt><dd>${errLabel}</dd>
   `;
 
+  const isMulti = (result.dims || 1) > 1;
   centersEl.innerHTML = result.centers
-    .map(
-      (row) => `
-      <tr>
-        <td>${fmt(row.center)}</td>
-        <td>${fmt(row.weight)}</td>
-      </tr>`
+    .slice(0, 500)
+    .map((row) =>
+      isMulti
+        ? `<tr>
+            <td>${fmt(row.x)}</td><td>${fmt(row.y)}</td><td>${fmt(row.z)}</td>
+            <td>${fmt(row.weight)}</td>
+          </tr>`
+        : `<tr>
+            <td>${fmt(row.center ?? row.x)}</td>
+            <td>${fmt(row.weight)}</td>
+          </tr>`
     )
     .join("");
 
+  const head = document.querySelector("#centers").closest("table").querySelector("thead tr");
+  head.innerHTML = isMulti
+    ? "<th>x</th><th>y</th><th>z</th><th>W</th>"
+    : "<th>c</th><th>W</th>";
+
   drawPreview(result);
+  splatViewer.setResult(result);
 }
 
 function escapeHtml(text) {
@@ -150,15 +184,31 @@ function drawPreview(result) {
 
   const width = cssWidth;
   const height = cssHeight;
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "#fffdf8";
+  ctx.fillRect(0, 0, width, height);
+
+  if ((result.dims || 1) > 1) {
+    ctx.fillStyle = "#6a6358";
+    ctx.font = "14px IBM Plex Mono, monospace";
+    ctx.fillText("Multi-variable result — see the 3D splat view above.", 24, height / 2);
+    ctx.font = "12px IBM Plex Mono, monospace";
+    ctx.fillText(`${result.splat_count ?? result.centers.length} gaussians in R^3`, 24, height / 2 + 24);
+    return;
+  }
+
   const pad = { l: 44, r: 18, t: 18, b: 36 };
   const xMin = -3;
   const xMax = 3;
   const n = 500;
   const xs = Array.from({ length: n }, (_, i) => xMin + ((xMax - xMin) * i) / (n - 1));
 
-  const components = result.centers.map(({ center, weight }) =>
-    xs.map((x) => weight * Math.exp(-0.5 * (x - center) ** 2))
-  );
+  const components = result.centers.map((c) => {
+    const center = c.center ?? c.x;
+    const weight = c.weight;
+    return xs.map((x) => weight * Math.exp(-0.5 * (x - center) ** 2));
+  });
   const sum = xs.map((_, i) => components.reduce((acc, row) => acc + row[i], 0));
   const target = xs.map((x) => evalPoly(result.coeffs, x) * Math.exp(-0.5 * x * x));
 
@@ -176,10 +226,6 @@ function drawPreview(result) {
   const xToPx = (x) => pad.l + ((x - xMin) / (xMax - xMin)) * (width - pad.l - pad.r);
   const yToPx = (y) => pad.t + ((yMax - y) / (yMax - yMin)) * (height - pad.t - pad.b);
 
-  ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = "#fffdf8";
-  ctx.fillRect(0, 0, width, height);
-
   ctx.strokeStyle = "rgba(28,25,21,0.08)";
   ctx.lineWidth = 1;
   for (let x = -3; x <= 3; x += 1) {
@@ -196,7 +242,9 @@ function drawPreview(result) {
   ctx.stroke();
 
   const maxAbsW = Math.max(...result.centers.map((c) => Math.abs(c.weight)), 1e-9);
-  result.centers.forEach(({ center, weight }, idx) => {
+  result.centers.forEach((c, idx) => {
+    const center = c.center ?? c.x;
+    const weight = c.weight;
     const ys = components[idx];
     const t = Math.abs(weight) / maxAbsW;
     const pos = weight >= 0;
