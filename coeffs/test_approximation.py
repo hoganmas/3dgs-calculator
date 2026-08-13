@@ -2,7 +2,6 @@
 Tests that R = A^{-1} yields a sum-of-gaussians approximation of P(x) e^{-x^2/2}.
 
 Run:
-  .venv/bin/python -m coeffs.test_approximation
   .venv/bin/python -m unittest coeffs.test_approximation -v
 """
 
@@ -12,13 +11,13 @@ import unittest
 
 import numpy as np
 
-from coeffs.__main__ import (
+from coeffs.gaussians import (
     approximation_error,
-    build_A_even,
     build_H_even,
     build_H_odd,
     compute_R,
     eval_gaussian_sum,
+    eval_polynomial_from_gaussians,
     gaussian_weights,
     hermite_monomial_coeff,
 )
@@ -80,7 +79,6 @@ class TestHe2AnalyticalWeights(unittest.TestCase):
 class TestGaussianApproximation(unittest.TestCase):
     def test_constant_polynomial(self):
         err = approximation_error(np.array([1.0]), N=0, epsilon=0.5)
-        # Degree 0 / single center: exact match (A is just the constant term).
         self.assertLess(err["max_abs"], 1e-12)
 
     def test_linear_polynomial_improves_with_smaller_epsilon(self):
@@ -108,7 +106,6 @@ class TestGaussianApproximation(unittest.TestCase):
         self.assertLess(err["max_rel"], 0.08)
 
     def test_A_recovers_monomial_coeffs(self):
-        """A @ w should recover the even/odd monomial blocks used to build w."""
         N, eps = 4, 0.4
         p = np.array([2.0, -1.0, 0.5, 0.25, -0.1])
         w_even, w_odd, result = gaussian_weights(p, N, eps)
@@ -120,15 +117,25 @@ class TestGaussianApproximation(unittest.TestCase):
 
     def test_reconstruction_is_even_or_odd_when_poly_is(self):
         x = np.linspace(-2.0, 2.0, 201)
-        # Even polynomial -> even approximation
         w_even, w_odd, _ = gaussian_weights(np.array([1.0, 0.0, -0.5, 0.0, 0.1]), 4, 0.3)
         approx = eval_gaussian_sum(x, w_even, w_odd, 0.3)
         np.testing.assert_allclose(approx, approx[::-1], atol=1e-10)
 
-        # Odd polynomial -> odd approximation
         w_even, w_odd, _ = gaussian_weights(np.array([0.0, 1.0, 0.0, -0.2]), 3, 0.3)
         approx = eval_gaussian_sum(x, w_even, w_odd, 0.3)
         np.testing.assert_allclose(approx, -approx[::-1], atol=1e-10)
+
+    def test_envelope_removal_recovers_polynomial(self):
+        p = np.array([1.0, -0.5, 0.25, 0.1, -0.05])
+        err = approximation_error(p, N=4, epsilon=0.2, remove_envelope=True)
+        self.assertLess(err["max_rel"], 0.05)
+
+        x = np.linspace(-1.5, 1.5, 201)
+        w_even, w_odd, _ = gaussian_weights(p, 4, 0.2)
+        poly_hat = eval_polynomial_from_gaussians(x, w_even, w_odd, 0.2)
+        # Sanity: not identically the enveloped curve
+        enveloped = eval_gaussian_sum(x, w_even, w_odd, 0.2)
+        self.assertGreater(float(np.max(np.abs(poly_hat - enveloped))), 0.1)
 
 
 class TestMatrixShapes(unittest.TestCase):
