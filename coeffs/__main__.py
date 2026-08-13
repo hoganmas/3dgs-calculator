@@ -8,6 +8,7 @@ import numpy as np
 
 from coeffs.gaussians import compute_R
 from coeffs.pipeline import format_gaussian_sum, latex_to_gaussians
+from coeffs.plot import save_or_show
 
 
 def _print_matrix(name: str, M: np.ndarray) -> None:
@@ -41,6 +42,24 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--x0", type=float, default=0.0, help="Taylor expansion point"
     )
+    parser.add_argument(
+        "--plot",
+        action="store_true",
+        help="Show gaussian-splat visualization",
+    )
+    parser.add_argument(
+        "--save",
+        type=str,
+        default=None,
+        help="Save plot to this path (implies plotting without requiring a display if --no-show)",
+    )
+    parser.add_argument(
+        "--no-show",
+        action="store_true",
+        help="Do not open an interactive window (useful with --save)",
+    )
+    parser.add_argument("--xmin", type=float, default=-3.0)
+    parser.add_argument("--xmax", type=float, default=3.0)
     args = parser.parse_args(argv)
 
     if args.latex is None:
@@ -70,6 +89,15 @@ def main(argv: list[str] | None = None) -> None:
         f"P(x) ≈ e^{{x^2/2}} * sum; "
         f"max_rel error on [-2,2] = {err['max_rel']:.3e}"
     )
+
+    if args.plot or args.save:
+        save_or_show(
+            approx,
+            output=args.save,
+            x_min=args.xmin,
+            x_max=args.xmax,
+            show=not args.no_show,
+        )
 
 
 if __name__ == "__main__":
