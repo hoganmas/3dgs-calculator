@@ -29,6 +29,18 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Web app (Pyodide)
+
+Browser build under [`../web/`](../web/): SymPy runs in-Wasm via Pyodide—no server-side Python required for evaluation.
+
+```bash
+# from repo root
+python3 -m http.server 8000
+# open http://localhost:8000/web/
+```
+
+See [web/README.md](../web/README.md) for details.
+
 ## CLI
 
 Print the even/odd \(R\) matrices for a given degree and spacing:

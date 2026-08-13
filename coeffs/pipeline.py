@@ -45,6 +45,9 @@ def parse_expression(latex: str, variable: str = "x") -> sp.Expr:
     Also accepts plain SymPy strings (e.g. 'sin(x)') as a fallback.
     """
     text = latex.strip()
+    if not text:
+        raise ValueError("Expression is empty.")
+
     x = sp.Symbol(variable)
     replacements = {sp.Symbol("e"): sp.E, sp.Symbol("E"): sp.E}
 
@@ -55,17 +58,20 @@ def parse_expression(latex: str, variable: str = "x") -> sp.Expr:
         except Exception:
             continue
 
+    rejected: list[str] = []
     for raw in candidates:
         expr = raw.subs(replacements)
         free = {str(s) for s in expr.free_symbols}
         if free <= {variable}:
             return sp.simplify(expr.subs(sp.Symbol(variable), x))
+        extras = sorted(free - {variable})
+        rejected.append(f"{expr} (extra symbols: {', '.join(extras)})")
 
-    tried = ", ".join(str(c) for c in candidates) or "<none>"
-    raise ValueError(
-        f"Could not parse '{text}' as an expression in '{variable}' "
-        f"(candidates: {tried})"
-    )
+    if rejected:
+        raise ValueError(
+            f"Need a function of '{variable}' only — {rejected[0]}"
+        )
+    raise ValueError(f"Could not parse expression: {text}")
 
 def taylor_coefficients(
     expr: sp.Expr,
