@@ -1,5 +1,4 @@
 numpy
-scipy
 sympy
 antlr4-python3-runtime==4.11.*
 matplotlib

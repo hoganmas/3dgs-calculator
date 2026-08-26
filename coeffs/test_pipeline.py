@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 
 import numpy as np
+import sympy as sp
 
 from coeffs.pipeline import latex_to_gaussians, parse_expression, taylor_coefficients
 
@@ -25,6 +26,10 @@ class TestParseLatex(unittest.TestCase):
         expr = parse_expression("cos(x)")
         self.assertEqual(str(expr), "cos(x)")
 
+    def test_xyz_product(self):
+        expr = parse_expression("z*(x*y)")
+        self.assertEqual(sp.expand(expr), sp.Symbol("x") * sp.Symbol("y") * sp.Symbol("z"))
+
 
 class TestLatexToGaussians(unittest.TestCase):
     def test_sin_pipeline(self):
@@ -38,6 +43,8 @@ class TestLatexToGaussians(unittest.TestCase):
         self.assertTrue(np.allclose(approx.w_even, 0.0, atol=1e-12))
         err = approx.error(remove_envelope=True)
         self.assertLess(err["max_rel"], 0.08)
+        self.assertEqual(approx.dims, 1)
+        self.assertIn("x", approx.centers[0])
 
     def test_exp_pipeline(self):
         approx = latex_to_gaussians(r"e^{x}", N=4, epsilon=0.2)
@@ -54,6 +61,17 @@ class TestLatexToGaussians(unittest.TestCase):
         np.testing.assert_allclose(approx.coeffs, np.ones(5), rtol=1e-12)
         err = approx.error(x=np.linspace(-1.0, 1.0, 201), remove_envelope=True)
         self.assertLess(err["max_rel"], 0.05)
+
+    def test_xyz_tensor_pipeline(self):
+        approx = latex_to_gaussians("x*y*z", N=3, epsilon=0.4)
+        self.assertEqual(approx.dims, 3)
+        self.assertEqual(approx.variables, ("x", "y", "z"))
+        self.assertGreater(len(approx.centers), 0)
+        # Odd in each axis → no mass exactly at origin for this monomial
+        origin = next((c for c in approx.centers if abs(c["x"]) + abs(c["y"]) + abs(c["z"]) < 1e-12), None)
+        self.assertIsNone(origin)
+        # Coefficient of x y z is 1
+        self.assertAlmostEqual(approx.coeff_tensor[1, 1, 1], 1.0)
 
 
 if __name__ == "__main__":
